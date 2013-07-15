@@ -82,7 +82,7 @@
 
 (eval-when-compile (require 'cl))
 (require 'highlight)
-(require 'paredit)
+;;(require 'paredit)
 
 (defgroup nrepl-eval-sexp-fu nil
   "Tiny functionality enhancements for evaluating sexps."
@@ -317,79 +317,81 @@ such that ignores any prefix arguments."
    buffer"
   (<= (buffer-size) (point)))
 
-(defun nesf-paredit-forward-down ()
-  "Doesn't freeze Emacs if attempted to be called at end of
-   buffer. Otherwise similar to paredit-forward-down."
-  (interactive)
-  (if (save-excursion
-          (forward-comment (buffer-size))
-          (not (nesf-end-of-buffer-p)))
-      (paredit-forward-down)
-    (error "unexpected end of buffer")))
+;; FIXME: freezes with smartparens alternatives
+;; (defun nesf-paredit-forward-down ()
+;;   "Doesn't freeze Emacs if attempted to be called at end of
+;;    buffer. Otherwise similar to paredit-forward-down."
+;;   (interactive)
+;;   (if (save-excursion
+;;           (forward-comment (buffer-size))
+;;           (not (nesf-end-of-buffer-p)))
+;;       (paredit-forward-down)
+;;     (error "unexpected end of buffer")))
 
-(defun nesf-paredit-top-level-p ()
-  "Returns true if point is not within a given form i.e. it's in
-  toplevel 'whitespace'"
-  (not
-   (save-excursion
-     (ignore-errors
-       (paredit-forward-up)
-       t))))
+;; (defun nesf-paredit-top-level-p ()
+;;   "Returns true if point is not within a given form i.e. it's in
+;;   toplevel 'whitespace'"
+;;   (not
+;;    (save-excursion
+;;      (ignore-errors
+;;        (paredit-forward-up)
+;;        t))))
 
 ;;; initialize.
 (defun nesf-initialize ()
   (define-nrepl-eval-sexp-fu-flash-command eval-last-sexp
     (nrepl-eval-sexp-fu-flash (save-excursion
-                          (backward-char)
-                          (bounds-of-thing-at-point 'sexp))))
+                                (backward-char)
+                                (bounds-of-thing-at-point 'sexp))))
   (define-nrepl-eval-sexp-fu-flash-command eval-defun
     (nrepl-eval-sexp-fu-flash (save-excursion
-                          (end-of-defun)
-                          (beginning-of-defun)
-                          (bounds-of-thing-at-point 'sexp))))
+                                (end-of-defun)
+                                (beginning-of-defun)
+                                (bounds-of-thing-at-point 'sexp))))
   (eval-after-load 'eev
     '(progn
-      ;; `eek-eval-last-sexp' is defined in eev.el.
-      (define-nrepl-eval-sexp-fu-flash-command eek-eval-last-sexp
-        (nrepl-eval-sexp-fu-flash (cons (save-excursion (eek-backward-sexp))
-                                  (point)))))))
-(defun nesf-initialize-nrepl ()
-  (define-nrepl-eval-sexp-fu-flash-command nrepl-eval-last-expression
-    (nrepl-eval-sexp-fu-flash (save-excursion
-                                (backward-char)
-                                (bounds-of-thing-at-point 'sexp))))
-  (define-nrepl-eval-sexp-fu-flash-command nrepl-pprint-eval-last-expression
-    (nrepl-eval-sexp-fu-flash (save-excursion
-                                (backward-char)
-                                (bounds-of-thing-at-point 'sexp))))
-  (define-nrepl-eval-sexp-fu-flash-command nrepl-eval-expression-at-point
-    (nrepl-eval-sexp-fu-flash      (when (not (and (nesf-paredit-top-level-p)
-                                                   (save-excursion
-                                                     (ignore-errors (forward-char))
-                                                     (nesf-paredit-top-level-p))))
-                                     (save-excursion
-                                       (save-match-data
-                                         (ignore-errors (nesf-paredit-forward-down))
-                                         (paredit-forward-up)
-                                         (while (ignore-errors (paredit-forward-up) t))
-                                         (let ((end (point)))
-                                           (backward-sexp)
-                                           (cons (point) end)))))))
+       ;; `eek-eval-last-sexp' is defined in eev.el.
+       (define-nrepl-eval-sexp-fu-flash-command eek-eval-last-sexp
+         (nrepl-eval-sexp-fu-flash (cons (save-excursion (eek-backward-sexp))
+                                         (point)))))))
+;; (defun nesf-initialize-nrepl ()
+;;   (define-nrepl-eval-sexp-fu-flash-command nrepl-eval-last-expression
+;;     (nrepl-eval-sexp-fu-flash (save-excursion
+;;                                 (backward-char)
+;;                                 (bounds-of-thing-at-point 'sexp))))
+;;   (define-nrepl-eval-sexp-fu-flash-command nrepl-pprint-eval-last-expression
+;;     (nrepl-eval-sexp-fu-flash (save-excursion
+;;                                 (backward-char)
+;;                                 (bounds-of-thing-at-point 'sexp))))
+;;   (define-nrepl-eval-sexp-fu-flash-command nrepl-eval-expression-at-point
+;;     (nrepl-eval-sexp-fu-flash      (when (not (and (nesf-paredit-top-level-p)
+;;                                                    (save-excursion
+;;                                                      (ignore-errors (forward-char))
+;;                                                      (nesf-paredit-top-level-p))))
+;;                                      (save-excursion
+;;                                        (save-match-data
+;;                                          (ignore-errors (nesf-paredit-forward-down))
+;;                                          (paredit-forward-up)
+;;                                          (while (ignore-errors (paredit-forward-up) t))
+;;                                          (let ((end (point)))
+;;                                            (backward-sexp)
+;;                                            (cons (point) end)))))))
 
-  (progn
-    ;; Defines:
-    ;; `nrepl-eval-sexp-fu-nrepl-eval-expression-inner-list',
-    ;; `nrepl-eval-sexp-fu-nrepl-eval-expression-inner-sexp'
-    ;; and the pprint variants respectively.
-    (define-nrepl-eval-sexp-fu-eval-sexp nrepl-eval-sexp-fu-nrepl-eval-expression
-      nrepl-eval-last-expression)
-    (define-nrepl-eval-sexp-fu-eval-sexp nrepl-eval-sexp-fu-nrepl-pprint-eval-expression
-      nrepl-pprint-eval-last-expression)))
+;;   (progn
+;;     ;; Defines:
+;;     ;; `nrepl-eval-sexp-fu-nrepl-eval-expression-inner-list',
+;;     ;; `nrepl-eval-sexp-fu-nrepl-eval-expression-inner-sexp'
+;;     ;; and the pprint variants respectively.
+;;     (define-nrepl-eval-sexp-fu-eval-sexp nrepl-eval-sexp-fu-nrepl-eval-expression
+;;       nrepl-eval-last-expression)
+;;     (define-nrepl-eval-sexp-fu-eval-sexp nrepl-eval-sexp-fu-nrepl-pprint-eval-expression
+;;       nrepl-pprint-eval-last-expression)))
 
 (eval-when (load eval)
   (nesf-initialize)
-  (eval-after-load 'nrepl
-    '(nesf-initialize-nrepl)))
+  ;; (eval-after-load 'nrepl
+  ;;   '(nesf-initialize-nrepl))
+  )
 
 (dont-compile
   (when (fboundp 'expectations)
